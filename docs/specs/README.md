@@ -33,3 +33,11 @@
   - `Spec`: 关联 spec 路径
   - `Status`: 当前阶段
   - `Validation`: 执行的验收项
+
+## 当前规格索引
+- `spec-001-keyboard-and-note-mapping.md`
+- `spec-002-audio-output-and-latency.md`
+- `spec-003-song-playback-and-script-format.md`
+- `spec-004-midi-in-out-and-vsti.md`
+- `spec-005-ui-alpha.md`
+- `spec-006-export-and-observability.md`

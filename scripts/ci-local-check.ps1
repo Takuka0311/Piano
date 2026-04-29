@@ -25,6 +25,7 @@ powershell -ExecutionPolicy Bypass -File scripts/configure.ps1 -BuildType Releas
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -BuildType Release -BuildDir $ReleaseDir
 powershell -ExecutionPolicy Bypass -Command "& `"$ReleaseDir/piano_cli.exe`" --help"
 powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir $ReleaseDir -AudioBackend log -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
+powershell -ExecutionPolicy Bypass -File scripts/smoke-export.ps1 -BuildDir $ReleaseDir -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -OutputPath dist/smoke-export.wav
 if ($env:PIANO_RUN_MIDIOUT_SMOKE -eq "1") {
     powershell -ExecutionPolicy Bypass -File scripts/smoke-midiout.ps1 -BuildDir $ReleaseDir -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in
 }

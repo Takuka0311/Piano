@@ -22,7 +22,19 @@ powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -BuildType Release -B
 - 再切回 `-AudioBackend wasapi`。
 - 检查系统默认输出设备是否可用、音量是否静音。
 
-## 5) M5 回归测试清单（建议每次发布前执行）
+## 5) 导出 WAV 失败
+- 先确认命令是否指定了 `--export-wav` 输出路径。
+- 确认输出目录可写（例如 `dist/`）。
+- 可使用冒烟脚本快速复现：
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/smoke-export.ps1 -BuildDir build-release -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -OutputPath dist/smoke-export.wav
+```
+
+## 6) GUI 参数输入后异常
+- `Sample Rate` / `Buffer(ms)` 输入非数字时，界面会自动回退到默认值（48000/40）。
+- 查看 GUI 诊断行：`backend / recoveries / errors / emitted`，用于定位播放路径是否发生回退。
+
+## 7) 回归测试清单（建议每次发布前执行）
 
 ### A. 基础链路
 1. 构建 Debug：

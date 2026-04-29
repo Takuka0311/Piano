@@ -13,11 +13,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(piano_cli
   src/app/main.cpp
   src/app/application.cpp
+  src/app/audio_backend_factory.cpp
   src/app/playback_service.cpp
   src/platform/config_store.cpp
   src/input/keyboard_map.cpp
   src/score/score_parser.cpp
   src/engine/score_scheduler.cpp
+  src/export/wav_exporter.cpp
   src/audio/log_output_sink.cpp
   src/audio/wasapi_output_sink.cpp
   src/audio/dsound_output_sink.cpp
@@ -49,11 +51,13 @@ target_link_libraries(piano_cli
 add_executable(piano_gui WIN32
   src/ui/gui_main.cpp
   src/ui/gui_app.cpp
+  src/app/audio_backend_factory.cpp
   src/platform/config_store.cpp
   src/app/playback_service.cpp
   src/input/keyboard_map.cpp
   src/score/score_parser.cpp
   src/engine/score_scheduler.cpp
+  src/export/wav_exporter.cpp
   src/audio/log_output_sink.cpp
   src/audio/wasapi_output_sink.cpp
   src/audio/dsound_output_sink.cpp
@@ -92,6 +96,7 @@ add_executable(piano_tests
   src/input/keyboard_map.cpp
   src/score/score_parser.cpp
   src/engine/score_scheduler.cpp
+  src/export/wav_exporter.cpp
 )
 
 target_include_directories(piano_tests

@@ -37,6 +37,8 @@ UiConfig ConfigStore::Load() const {
         config.midi_out_device = value;
       } else if (key == "vsti_plugin_path") {
         config.vsti_plugin_path = value;
+      } else if (key == "export_wav_path") {
+        config.export_wav_path = value;
       } else if (key == "recent_keyboard_path") {
         config.recent_keyboard_path = value;
       } else if (key == "recent_score_path") {
@@ -69,6 +71,7 @@ bool ConfigStore::Save(const UiConfig& config, std::string* error_message) const
   out << "backend_priority=" << config.backend_priority << '\n';
   out << "midi_out_device=" << config.midi_out_device << '\n';
   out << "vsti_plugin_path=" << config.vsti_plugin_path << '\n';
+  out << "export_wav_path=" << config.export_wav_path << '\n';
   out << "recent_keyboard_path=" << config.recent_keyboard_path << '\n';
   out << "recent_score_path=" << config.recent_score_path << '\n';
   out << "sample_rate=" << config.sample_rate << '\n';

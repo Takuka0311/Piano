@@ -57,6 +57,14 @@ powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -BuildType Debug -Bui
 .\build\piano_cli.exe --help
 ```
 
+## 导出 WAV（M7）
+```powershell
+.\build\piano_cli.exe --keyboard assets/default.keyboard --score assets/demo.in --sample-rate 16000 --export-wav dist/demo.wav
+powershell -ExecutionPolicy Bypass -File scripts/smoke-export.ps1 -BuildDir build-release -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -OutputPath dist/smoke-export.wav
+```
+
+GUI 也支持导出：填写 `Export WAV` 路径后点击 `Export WAV` 按钮。
+
 ## 打包
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/package.ps1 -BuildType Release -BuildDir build-release -OutputDir dist

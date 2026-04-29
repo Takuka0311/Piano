@@ -13,6 +13,7 @@ struct AppOptions {
   std::string backend_priority = "vsti,midiout,wasapi,dsound,log";
   std::string midi_out_device;
   std::string vsti_plugin_path;
+  std::string export_wav_path;
   int sample_rate = 48000;
   int buffer_ms = 40;
 };

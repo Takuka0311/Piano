@@ -2,7 +2,7 @@
 
 这是一个仅面向 Windows 的钢琴项目重构仓库，采用 spec-driven 开发方式。
 
-## 当前里程碑状态（M6 最小链路已落地）
+## 当前里程碑状态（M7 已落地）
 - 已完成最小可运行 CLI 骨架（`CMake + Ninja + C++20`）。
 - 已完成模块拆分：`input / score / engine / audio / app`。
 - 已实现 spec-001 + spec-003 闭环：
@@ -14,6 +14,8 @@
 - 已新增 GUI Alpha（`piano_gui`）：播放控制、文件选择、参数配置、键盘可视化、配置持久化。
 - 已新增 MIDI Out 与 VST2.4 最小宿主能力（CLI+GUI 双入口）。
 - 已统一错误码前缀，并补齐后端优先级、输出模式与插件/设备配置持久化。
+- 已新增离线 WAV 导出（CLI + GUI）与导出冒烟脚本。
+- 已新增运行诊断指标（后端/恢复次数/错误次数/事件计数）与结构化观测日志。
 - 已增加基础自动化测试（CTest）与回归样例。
 - 已提供本地脚本：`configure/build/run-demo/package/ci-local-check`。
 - 已提供 GitHub Actions：`.github/workflows/windows-ci.yml`。
@@ -39,6 +41,7 @@ powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -A
 powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -AudioBackend vsti -VstiPluginPath "C:\path\to\mdaPiano.dll" -MidiOutDevice 0 -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
 powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -AudioBackend dsound -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
 powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -AudioBackend log -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
+.\build\piano_cli.exe --keyboard assets/default.keyboard --score assets/demo.in --sample-rate 16000 --export-wav dist/demo.wav
 .\build\piano_gui.exe
 & "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe" --test-dir build --output-on-failure
 powershell -ExecutionPolicy Bypass -File scripts/package.ps1 -BuildType Release -BuildDir build-release -OutputDir dist
@@ -57,7 +60,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify-package.ps1 -ZipPath dis
 - `docs/roadmap/README.md`
 - `docs/roadmap/future-plan.md`
 
-## 下一步（M7）
-- 导出能力（WAV）与可观测性建设。
-- 性能指标采样与结构化日志完善。
-- 持续增强 VST 宿主能力与兼容性回归。
+## 下一步（M8 建议）
+- 导出音色与实时后端一致性增强（离线渲染器与实时混音核心共用）。
+- 结构化日志升级到 JSONL 并增加会话级 trace id。
+- GUI 继续拆分（控件构建/状态同步/绘制模块化）并补交互自动化测试。

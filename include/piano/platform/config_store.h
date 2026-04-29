@@ -11,7 +11,8 @@ struct UiConfig {
   std::string audio_backend = "wasapi";
   std::string backend_priority = "vsti,midiout,wasapi,dsound,log";
   std::string midi_out_device;
-  std::string vsti_plugin_path;
+  std::string vsti_plugin_path = "assets/mdaPiano.dll";
+  std::string export_wav_path = "output.wav";
   std::string recent_keyboard_path;
   std::string recent_score_path;
   int sample_rate = 48000;

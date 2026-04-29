@@ -25,14 +25,14 @@ bool MidiOutputSink::Start(std::string* error_message) {
 
   UINT device_id = MIDI_MAPPER;
   if (!device_name_.empty() && !ParseDeviceIndex(device_name_, &device_id)) {
-    if (error_message != nullptr) {
-      *error_message = "MIDI out invalid device id: " + device_name_;
-    }
-    healthy_.store(false);
-    return false;
+    // Fall back to system mapper when configured device is unavailable.
+    device_id = MIDI_MAPPER;
   }
 
-  const MMRESULT result = midiOutOpen(&midi_out_, device_id, 0, 0, CALLBACK_NULL);
+  MMRESULT result = midiOutOpen(&midi_out_, device_id, 0, 0, CALLBACK_NULL);
+  if (result != MMSYSERR_NOERROR || midi_out_ == nullptr) {
+    result = midiOutOpen(&midi_out_, MIDI_MAPPER, 0, 0, CALLBACK_NULL);
+  }
   if (result != MMSYSERR_NOERROR || midi_out_ == nullptr) {
     if (error_message != nullptr) {
       *error_message = "MIDI out open failed";

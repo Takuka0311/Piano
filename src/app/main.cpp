@@ -3,6 +3,7 @@
 
 #include "piano/app/application.h"
 #include "piano/app/error_codes.h"
+#include "piano/export/wav_exporter.h"
 #include "piano/platform/config_store.h"
 
 namespace {
@@ -11,6 +12,7 @@ struct ParseResult {
   piano::app::AppOptions options;
   bool ok = true;
   bool show_help = false;
+  bool export_requested = false;
   std::string error;
 };
 
@@ -24,6 +26,7 @@ void PrintUsage(const char* program) {
             << "  --backend-priority <list> fallback order, e.g. vsti,midiout,wasapi,dsound,log\n"
             << "  --midi-out-device <name>  MIDI out device name or index\n"
             << "  --vsti-plugin <path>      VST2.4 plugin path (.dll)\n"
+            << "  --export-wav <path>       export score to wav and exit\n"
             << "  --sample-rate <value>     sample rate, e.g. 44100/48000 (default: 48000)\n"
             << "  --buffer-ms <value>       audio buffer in milliseconds (default: 40)\n"
             << "  --help                    show this message\n";
@@ -40,6 +43,7 @@ ParseResult ParseArgs(int argc, char** argv) {
   result.options.backend_priority = persisted.backend_priority;
   result.options.midi_out_device = persisted.midi_out_device;
   result.options.vsti_plugin_path = persisted.vsti_plugin_path;
+  result.options.export_wav_path = persisted.export_wav_path;
   result.options.sample_rate = persisted.sample_rate;
   result.options.buffer_ms = persisted.buffer_ms;
   if (result.options.output_mode.empty()) {
@@ -47,6 +51,14 @@ ParseResult ParseArgs(int argc, char** argv) {
   }
   if (result.options.audio_backend.empty()) {
     result.options.audio_backend = result.options.output_mode;
+  }
+  if (result.options.keyboard_map_path.empty() ||
+      result.options.keyboard_map_path.find("reference/Piano/Piano/init.keyboard") != std::string::npos) {
+    result.options.keyboard_map_path = "assets/default.keyboard";
+  }
+  if (result.options.vsti_plugin_path.empty() ||
+      result.options.vsti_plugin_path.find("reference/Piano/Piano/mdaPiano.dll") != std::string::npos) {
+    result.options.vsti_plugin_path = "assets/mdaPiano.dll";
   }
 
   for (int i = 1; i < argc; ++i) {
@@ -73,6 +85,9 @@ ParseResult ParseArgs(int argc, char** argv) {
       result.options.midi_out_device = argv[++i];
     } else if (arg == "--vsti-plugin" && i + 1 < argc) {
       result.options.vsti_plugin_path = argv[++i];
+    } else if (arg == "--export-wav" && i + 1 < argc) {
+      result.options.export_wav_path = argv[++i];
+      result.export_requested = true;
     } else if (arg == "--sample-rate" && i + 1 < argc) {
       result.options.sample_rate = std::stoi(argv[++i]);
     } else if (arg == "--buffer-ms" && i + 1 < argc) {
@@ -99,7 +114,7 @@ ParseResult ParseArgs(int argc, char** argv) {
                                            "--sample-rate and --buffer-ms must be positive");
     return result;
   }
-  if (result.options.output_mode == "vsti" && result.options.vsti_plugin_path.empty()) {
+  if (!result.export_requested && result.options.output_mode == "vsti" && result.options.vsti_plugin_path.empty()) {
     result.ok = false;
     result.error = piano::app::FormatError(piano::app::AppErrorCode::kInvalidArgument,
                                            "--vsti-plugin is required when --output-mode vsti");
@@ -124,7 +139,7 @@ int main(int argc, char** argv) {
   }
 
   const auto options = parsed.options;
-  std::cout << "Piano CLI M6 started\n";
+  std::cout << "Piano CLI M7 started\n";
   std::cout << "keyboard=" << options.keyboard_map_path << '\n';
   std::cout << "score=" << options.score_path << '\n';
   std::cout << "output_mode=" << options.output_mode
@@ -132,8 +147,19 @@ int main(int argc, char** argv) {
             << " sample_rate=" << options.sample_rate
             << " buffer_ms=" << options.buffer_ms << '\n';
 
-  piano::app::Application app;
-  const int run_code = app.Run(options);
+  int run_code = 0;
+  if (parsed.export_requested) {
+    std::string export_error;
+    if (!piano::exporter::ExportScoreToWav(options, options.export_wav_path, &export_error)) {
+      std::cerr << piano::app::FormatError(piano::app::AppErrorCode::kAudioStartFailed, export_error) << '\n';
+      run_code = 1;
+    } else {
+      std::cout << "exported wav: " << options.export_wav_path << '\n';
+    }
+  } else {
+    piano::app::Application app;
+    run_code = app.Run(options);
+  }
 
   piano::platform::ConfigStore config_store("piano-ui-config.ini");
   auto config = config_store.Load();
@@ -144,6 +170,7 @@ int main(int argc, char** argv) {
   config.backend_priority = options.backend_priority;
   config.midi_out_device = options.midi_out_device;
   config.vsti_plugin_path = options.vsti_plugin_path;
+  config.export_wav_path = options.export_wav_path;
   config.sample_rate = options.sample_rate;
   config.buffer_ms = options.buffer_ms;
   config.recent_keyboard_path = options.keyboard_map_path;

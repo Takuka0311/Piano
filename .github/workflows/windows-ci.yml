@@ -81,6 +81,10 @@ jobs:
         shell: pwsh
         run: ./scripts/run-gui-smoke.ps1 -BuildDir build-release -ExitMs 1200
 
+      - name: Smoke export (wav)
+        shell: pwsh
+        run: ./scripts/smoke-export.ps1 -BuildDir build-release -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -OutputPath dist/smoke-export.wav
+
       - name: Package
         shell: pwsh
         run: ./scripts/package.ps1 -BuildType Release -BuildDir build-release -OutputDir dist

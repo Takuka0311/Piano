@@ -17,6 +17,7 @@ class GuiApp {
 
   bool StartPlayback(std::string* error_message);
   void StopPlayback();
+  bool ExportWav(std::string* error_message);
   app::PlaybackSnapshot Snapshot() const;
   bool SaveConfig(std::string* error_message) const;
 

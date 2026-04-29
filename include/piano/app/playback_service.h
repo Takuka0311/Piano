@@ -27,6 +27,10 @@ enum class PlaybackState {
 struct PlaybackSnapshot {
   PlaybackState state = PlaybackState::kIdle;
   std::string message;
+  std::string active_backend;
+  int recoveries = 0;
+  int errors = 0;
+  int emitted_events = 0;
   std::set<int> active_notes;
 };
 
@@ -59,7 +63,6 @@ class PlaybackService {
                    std::unique_ptr<audio::OutputSink> sink);
   void SetError(const std::string& message);
   void SetError(AppErrorCode code, const std::string& message);
-  static std::vector<std::string> ParseBackendPriority(const std::string& raw);
 
   std::atomic<bool> running_{false};
   std::atomic<bool> stop_requested_{false};
@@ -68,6 +71,10 @@ class PlaybackService {
   mutable std::mutex state_mutex_;
   PlaybackState state_ = PlaybackState::kIdle;
   std::string message_;
+  std::string active_backend_;
+  int recoveries_ = 0;
+  int errors_ = 0;
+  int emitted_events_ = 0;
   std::set<int> active_notes_;
 };
 

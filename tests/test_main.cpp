@@ -1,10 +1,12 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <vector>
 
 #include "piano/engine/score_scheduler.h"
+#include "piano/export/wav_exporter.h"
 #include "piano/input/keyboard_map.h"
 #include "piano/platform/config_store.h"
 #include "piano/score/score_parser.h"
@@ -146,6 +148,7 @@ void TestConfigStoreRoundTripM6Fields() {
   config.backend_priority = "vsti,midiout,wasapi,dsound,log";
   config.midi_out_device = "0";
   config.vsti_plugin_path = "mdaPiano.dll";
+  config.export_wav_path = "temp/output.wav";
   config.sample_rate = 48000;
   config.buffer_ms = 40;
   config.recent_keyboard_path = "assets/default.keyboard";
@@ -157,6 +160,50 @@ void TestConfigStoreRoundTripM6Fields() {
   Require(loaded.output_mode == "vsti", "output_mode should round-trip");
   Require(loaded.midi_out_device == "0", "midi_out_device should round-trip");
   Require(loaded.vsti_plugin_path == "mdaPiano.dll", "vsti_plugin_path should round-trip");
+  Require(loaded.export_wav_path == "temp/output.wav", "export_wav_path should round-trip");
+}
+
+void TestWavExportDeterministic() {
+  const auto temp_dir = std::filesystem::temp_directory_path() / "piano_m7_export_tests";
+  std::filesystem::create_directories(temp_dir);
+  const auto wav_a = temp_dir / "demo_a.wav";
+  const auto wav_b = temp_dir / "demo_b.wav";
+
+  piano::app::AppOptions options;
+  const std::vector<std::string> keyboard_candidates = {
+      "assets/default.keyboard",
+      "../assets/default.keyboard",
+  };
+  const std::vector<std::string> score_candidates = {
+      "assets/demo.in",
+      "../assets/demo.in",
+  };
+  for (const auto& candidate : keyboard_candidates) {
+    if (std::filesystem::exists(candidate)) {
+      options.keyboard_map_path = candidate;
+      break;
+    }
+  }
+  for (const auto& candidate : score_candidates) {
+    if (std::filesystem::exists(candidate)) {
+      options.score_path = candidate;
+      break;
+    }
+  }
+  Require(!options.keyboard_map_path.empty(), "keyboard fixture should exist");
+  Require(!options.score_path.empty(), "score fixture should exist");
+  options.sample_rate = 16000;
+
+  std::string error;
+  Require(piano::exporter::ExportScoreToWav(options, wav_a.string(), &error), "first wav export should succeed");
+  Require(piano::exporter::ExportScoreToWav(options, wav_b.string(), &error), "second wav export should succeed");
+
+  std::ifstream in_a(wav_a, std::ios::binary);
+  std::ifstream in_b(wav_b, std::ios::binary);
+  std::vector<char> bytes_a((std::istreambuf_iterator<char>(in_a)), std::istreambuf_iterator<char>());
+  std::vector<char> bytes_b((std::istreambuf_iterator<char>(in_b)), std::istreambuf_iterator<char>());
+  Require(!bytes_a.empty(), "exported wav should not be empty");
+  Require(bytes_a == bytes_b, "wav export should be deterministic for same input");
 }
 
 }  // namespace
@@ -171,6 +218,7 @@ int main() {
   TestSchedulerUnsupportedToken();
   TestSchedulerLegacyScaleToken();
   TestConfigStoreRoundTripM6Fields();
+  TestWavExportDeterministic();
   std::cout << "[PASS] piano_tests\n";
   return 0;
 }
