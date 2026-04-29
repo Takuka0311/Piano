@@ -1,0 +1,86 @@
+name: windows-ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_long_wasapi:
+        description: "Run 10-minute WASAPI smoke test"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-test-package:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure (Release)
+        shell: pwsh
+        run: ./scripts/configure.ps1 -BuildType Release -BuildDir build-release
+
+      - name: Build (Release)
+        shell: pwsh
+        run: ./scripts/build.ps1 -BuildType Release -BuildDir build-release
+
+      - name: Build tests (Debug)
+        shell: pwsh
+        run: |
+          ./scripts/configure.ps1 -BuildType Debug -BuildDir build
+          ./scripts/build.ps1 -BuildType Debug -BuildDir build
+
+      - name: Run tests
+        shell: pwsh
+        run: |
+          if (Get-Command ctest -ErrorAction SilentlyContinue) {
+            ctest --test-dir build --output-on-failure
+            exit $LASTEXITCODE
+          }
+          $candidates = @(
+            "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe",
+            "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe",
+            "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe"
+          )
+          foreach ($path in $candidates) {
+            if (Test-Path $path) {
+              & $path --test-dir build --output-on-failure
+              exit $LASTEXITCODE
+            }
+          }
+          throw "ctest executable not found"
+
+      - name: Smoke run (log backend)
+        shell: pwsh
+        run: ./scripts/run-demo.ps1 -BuildDir build-release -AudioBackend log -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
+
+      - name: Package
+        shell: pwsh
+        run: ./scripts/package.ps1 -BuildType Release -BuildDir build-release -OutputDir dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: piano-win-x64
+          path: dist/piano-win-x64.zip
+
+  long-wasapi-manual:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_long_wasapi
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure + Build (Release)
+        shell: pwsh
+        run: |
+          ./scripts/configure.ps1 -BuildType Release -BuildDir build-release
+          ./scripts/build.ps1 -BuildType Release -BuildDir build-release
+
+      - name: WASAPI long smoke (600s)
+        shell: pwsh
+        run: ./scripts/smoke-wasapi.ps1 -BuildDir build-release -DurationSeconds 600 -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in

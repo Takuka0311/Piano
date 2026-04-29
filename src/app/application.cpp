@@ -1,8 +1,13 @@
 #include "piano/app/application.h"
 
+#include <chrono>
 #include <iostream>
+#include <memory>
+#include <thread>
 
 #include "piano/audio/log_output_sink.h"
+#include "piano/audio/output_sink.h"
+#include "piano/audio/wasapi_output_sink.h"
 #include "piano/engine/score_scheduler.h"
 #include "piano/input/keyboard_map.h"
 #include "piano/score/score_parser.h"
@@ -42,10 +47,56 @@ int Application::Run(const AppOptions& options) const {
   }
   std::cout << "Generated scheduled events: " << events.size() << '\n';
 
-  audio::LogOutputSink sink(std::cout);
-  for (const auto& event : events) {
-    sink.Emit(event);
+  std::unique_ptr<audio::OutputSink> sink;
+  bool using_log_backend = options.audio_backend == "log";
+  const auto build_sink = [&](bool use_log) -> std::unique_ptr<audio::OutputSink> {
+    if (use_log) {
+      return std::make_unique<audio::LogOutputSink>(std::cout);
+    }
+    return std::make_unique<audio::WasapiOutputSink>(options.sample_rate, options.buffer_ms);
+  };
+  sink = build_sink(using_log_backend);
+
+  if (!sink->Start(&error)) {
+    std::cerr << "Audio backend start failed: " << error << '\n';
+    if (!using_log_backend) {
+      std::cerr << "Fallback to log backend\n";
+      using_log_backend = true;
+      sink = build_sink(true);
+      if (!sink->Start(&error)) {
+        std::cerr << "Log backend start failed: " << error << '\n';
+        return 1;
+      }
+    } else {
+      return 1;
+    }
   }
+
+  const auto start = std::chrono::steady_clock::now();
+  for (const auto& event : events) {
+    const auto target = start + std::chrono::milliseconds(static_cast<int>(event.at_ms));
+    std::this_thread::sleep_until(target);
+
+    if (!sink->IsHealthy(&error)) {
+      std::cerr << "Audio backend runtime unhealthy: " << error << '\n';
+      if (!using_log_backend) {
+        std::cerr << "Fallback to log backend (runtime)\n";
+        sink->Stop();
+        using_log_backend = true;
+        sink = build_sink(true);
+        if (!sink->Start(&error)) {
+          std::cerr << "Log backend start failed: " << error << '\n';
+          return 1;
+        }
+      } else {
+        return 1;
+      }
+    }
+
+    sink->Emit(event);
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(250));
+  sink->Stop();
 
   return 0;
 }

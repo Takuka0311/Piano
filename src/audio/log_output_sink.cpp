@@ -24,6 +24,15 @@ const char* EventTypeToString(engine::EventType type) {
 
 LogOutputSink::LogOutputSink(std::ostream& stream) : stream_(stream) {}
 
+bool LogOutputSink::Start(std::string* error_message) {
+  if (error_message != nullptr) {
+    error_message->clear();
+  }
+  return true;
+}
+
+void LogOutputSink::Stop() {}
+
 void LogOutputSink::Emit(const engine::ScheduledEvent& event) {
   stream_ << "[t=" << std::fixed << std::setprecision(1) << event.at_ms << "ms]"
           << " type=" << EventTypeToString(event.type)
@@ -32,6 +41,13 @@ void LogOutputSink::Emit(const engine::ScheduledEvent& event) {
     stream_ << " midi=" << event.midi_key;
   }
   stream_ << " value=" << event.value << '\n';
+}
+
+bool LogOutputSink::IsHealthy(std::string* error_message) const {
+  if (error_message != nullptr) {
+    error_message->clear();
+  }
+  return true;
 }
 
 }  // namespace piano::audio

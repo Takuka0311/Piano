@@ -8,6 +8,9 @@ $ErrorActionPreference = "Stop"
 
 if (Get-Command cmake -ErrorAction SilentlyContinue) {
     cmake --build $BuildDir --config $BuildType
+    if ($LASTEXITCODE -ne 0) {
+        throw "cmake build failed."
+    }
     Write-Host "Build completed for $BuildType"
     exit 0
 }
@@ -20,4 +23,7 @@ if (-not (Test-Path $vsCmake) -or -not (Test-Path $vcvars)) {
 
 $cmd = "`"$vcvars`" && `"$vsCmake`" --build $BuildDir --config $BuildType"
 cmd /c $cmd
+if ($LASTEXITCODE -ne 0) {
+    throw "cmake build failed via VS toolchain."
+}
 Write-Host "Build completed for $BuildType"

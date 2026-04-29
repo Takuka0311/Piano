@@ -29,13 +29,19 @@
 
 ## GitHub Actions 发布方案
 - 触发：
-  - `push` 到发布分支或 `tag`。
+  - `push` / `pull_request`（默认快速流水线）。
+  - `workflow_dispatch`（可选手动长时 WASAPI smoke）。
 - 阶段：
-  1. 安装 CMake + Ninja。
-  2. 配置构建（Release）。
-  3. 编译并执行基础测试。
-  4. 打包可运行产物（zip）。
-  5. 创建 GitHub Release 并上传附件。
+  1. Configure（Release）。
+  2. Build（Release）。
+  3. Build + Test（Debug，`ctest`）。
+  4. Smoke run（`log` backend）。
+  5. Package（zip）并上传 artifact。
+ - 工作流文件：
+  - `.github/workflows/windows-ci.yml`
+ - 说明：
+  - 默认流水线不跑 10 分钟发声测试，保持 PR 反馈速度。
+  - 长时发声测试通过 `workflow_dispatch` 的 `run_long_wasapi=true` 手动触发。
 
 ## 产物要求
 - 目标：用户下载后可直接运行 `.exe`。
@@ -48,7 +54,7 @@
 ## 最小 CI 示例（策略）
 - 使用 `windows-latest` runner。
 - 默认生成 x64 Release。
-- 保持单命令构建链：`configure -> build -> package`。
+- 保持单命令构建链：`configure -> build -> test -> smoke -> package`。
 
 ## 质量门禁建议
 - PR 门禁：

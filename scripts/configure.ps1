@@ -8,6 +8,9 @@ $ErrorActionPreference = "Stop"
 
 if (Get-Command cmake -ErrorAction SilentlyContinue) {
     cmake -S . -B $BuildDir -G Ninja -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    if ($LASTEXITCODE -ne 0) {
+        throw "cmake configure failed."
+    }
     Write-Host "Configured with $BuildType in $BuildDir"
     exit 0
 }
@@ -21,4 +24,7 @@ if (-not (Test-Path $vsCmake) -or -not (Test-Path $vsNinja) -or -not (Test-Path 
 
 $cmd = "`"$vcvars`" && `"$vsCmake`" -S . -B $BuildDir -G Ninja -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_MAKE_PROGRAM=`"$vsNinja`""
 cmd /c $cmd
+if ($LASTEXITCODE -ne 0) {
+    throw "cmake configure failed via VS toolchain."
+}
 Write-Host "Configured with $BuildType in $BuildDir"

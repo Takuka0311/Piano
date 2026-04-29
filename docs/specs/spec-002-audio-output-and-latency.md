@@ -1,6 +1,6 @@
 # SPEC-002 音频输出与延迟
 
-- 状态：`draft`
+- 状态：`review`
 - 优先级：P0
 
 ## 背景与目标
@@ -41,3 +41,25 @@
 ## 风险与回滚
 - 风险：不同驱动实现导致行为差异。
 - 回滚：提供固定保守缓冲配置和后端强制切换选项。
+
+## 实现记录（M2）
+- 实现文件：
+  - `include/piano/audio/wasapi_output_sink.h`
+  - `src/audio/wasapi_output_sink.cpp`
+  - `src/app/application.cpp`
+  - `src/app/main.cpp`
+- 已落地能力：
+  - `--audio-backend wasapi|log` 输出后端切换；
+  - 默认 `wasapi` 启动，失败自动回退 `log` 并输出错误信息；
+  - 支持 `--sample-rate` 与 `--buffer-ms` 运行参数；
+  - 保留 `log` 后端用于回归验证。
+- 当前差距（进入 implemented 前需补齐）：
+  - 10 分钟长时稳定性与设备断开恢复未完成自动化验证；
+  - 设备热切换/断开后的自动重建策略仍需补齐。
+
+## 进展记录（M3）
+- WASAPI 已升级为持续混音模型：
+  - 支持 NoteOn/NoteOff 事件语义；
+  - 支持复音混音输出；
+  - 提供运行时健康状态上报（`IsHealthy`），应用层可执行回退。
+- 应用层已在运行时检测后端健康并支持回退 `log`。
