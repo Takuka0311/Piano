@@ -25,30 +25,70 @@ int ClampMidiKey(int midi_key) {
   return midi_key;
 }
 
-int SemitoneFromLetter(char letter) {
-  switch (std::toupper(static_cast<unsigned char>(letter))) {
-    case 'C':
-      return 0;
-    case 'D':
-      return 2;
-    case 'E':
-      return 4;
-    case 'F':
-      return 5;
-    case 'G':
-      return 7;
-    case 'A':
-      return 9;
-    case 'B':
-      return 11;
-    default:
-      return 0;
-  }
-}
-
 bool IsControlLetter(char c) {
   const char up = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
   return up >= 'A' && up <= 'G';
+}
+
+bool TryParseLegacyScaleToken(const std::string& token, int* new_transpose) {
+  if (new_transpose == nullptr || token.empty() || !IsControlLetter(token[0])) {
+    return false;
+  }
+  if (token.size() > 2) {
+    return false;
+  }
+  if (token.size() == 2 && token[1] != '+' && token[1] != '-') {
+    return false;
+  }
+
+  const bool minus_tail = token.size() == 2 && token[1] == '-';
+  const bool plus_tail = token.size() == 2 && token[1] == '+';
+  switch (token[0]) {
+    case 'A':
+      *new_transpose = -3 - (minus_tail ? 1 : 0);
+      return true;
+    case 'B':
+      *new_transpose = -1 - (minus_tail ? 1 : 0);
+      return true;
+    case 'C':
+      *new_transpose = 0;
+      return true;
+    case 'D':
+      *new_transpose = 2 - (minus_tail ? 1 : 0);
+      return true;
+    case 'E':
+      *new_transpose = 4 - (minus_tail ? 1 : 0);
+      return true;
+    case 'F':
+      *new_transpose = 5;
+      return true;
+    case 'G':
+      *new_transpose = -5 - (minus_tail ? 1 : 0);
+      return true;
+    case 'a':
+      *new_transpose = 0;
+      return true;
+    case 'b':
+      *new_transpose = 2 - (minus_tail ? 1 : 0);
+      return true;
+    case 'c':
+      *new_transpose = 3 + (plus_tail ? 1 : 0);
+      return true;
+    case 'd':
+      *new_transpose = 5;
+      return true;
+    case 'e':
+      *new_transpose = -5 - (minus_tail ? 1 : 0);
+      return true;
+    case 'f':
+      *new_transpose = -4 + (plus_tail ? 1 : 0);
+      return true;
+    case 'g':
+      *new_transpose = -2 + (plus_tail ? 1 : 0);
+      return true;
+    default:
+      return false;
+  }
 }
 
 int EventPriority(EventType type) {
@@ -115,14 +155,14 @@ std::vector<ScheduledEvent> ScoreScheduler::BuildEvents(const std::vector<score:
       continue;
     }
 
-    if (token == "0") {
+    // Legacy compatibility: any token that starts with '0' is treated as rest.
+    if (!token.empty() && token[0] == '0') {
       continue;
     }
 
-    if (token.size() == 1 && IsControlLetter(token[0])) {
-      const int semitone = SemitoneFromLetter(token[0]);
-      const bool upper = std::isupper(static_cast<unsigned char>(token[0])) != 0;
-      transpose = upper ? semitone : -semitone;
+    int legacy_transpose = 0;
+    if (TryParseLegacyScaleToken(token, &legacy_transpose)) {
+      transpose = legacy_transpose;
       events.push_back({at_ms, EventType::kTransposeChange, -1, transpose, token});
       continue;
     }
@@ -130,7 +170,15 @@ std::vector<ScheduledEvent> ScoreScheduler::BuildEvents(const std::vector<score:
     int midi_key = -1;
     if (!TryParseNoteToken(token, transpose, &midi_key)) {
       if (error_message != nullptr) {
-        *error_message = "unsupported token in score: " + token;
+        std::string line_hint;
+        if (command.source_line > 0) {
+          line_hint = " at line " + std::to_string(command.source_line);
+        }
+        std::string source_hint;
+        if (!command.source_text.empty()) {
+          source_hint = " | " + command.source_text;
+        }
+        *error_message = "unsupported token in score" + line_hint + ": " + token + source_hint;
       }
       return {};
     }

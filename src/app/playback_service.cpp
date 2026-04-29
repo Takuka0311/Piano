@@ -35,7 +35,7 @@ bool PlaybackService::Start(const AppOptions& options, std::string* error_messag
 
   std::vector<engine::ScheduledEvent> events;
   if (!PrepareEvents(options, &events, error_message)) {
-    SetError(AppErrorCode::kScheduleFailed, error_message != nullptr ? *error_message : "failed to prepare events");
+    SetError(error_message != nullptr ? *error_message : FormatError(AppErrorCode::kScheduleFailed, "failed to prepare events"));
     return false;
   }
 

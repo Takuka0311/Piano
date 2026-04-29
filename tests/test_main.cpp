@@ -55,6 +55,17 @@ void TestScoreParserSortsByBegin() {
   Require(commands[0].begin_beats == 0.0, "commands should be sorted by begin time");
 }
 
+void TestScoreParserLegacyColumnOrder() {
+  const auto path = WriteTempFile("legacy_order.in", "0.0 0.5 1 90\n0.5 0.5 2 90\n");
+  piano::score::ScoreParser parser;
+  std::string error;
+  Require(parser.LoadFromFile(path.string(), &error), "legacy order score should parse");
+  const auto& commands = parser.Commands();
+  Require(commands.size() == 2, "legacy order should produce two commands");
+  Require(commands[0].token == "1", "legacy token should be parsed from third column");
+  Require(commands[0].last_beats == 0.5, "legacy duration should be parsed from second column");
+}
+
 void TestSchedulerRegression() {
   piano::score::ScoreParser parser;
   std::string error;
@@ -85,8 +96,8 @@ void TestSchedulerRegression() {
 
 void TestSchedulerNoteOffOrdering() {
   std::vector<piano::score::ScoreCommand> commands = {
-      {0.0, "1", 1.0, 80},
-      {1.0, "2", 0.5, 80},
+      {0.0, "1", 1.0, 80, 0, {}},
+      {1.0, "2", 0.5, 80, 0, {}},
   };
 
   piano::engine::ScoreScheduler scheduler;
@@ -101,13 +112,27 @@ void TestSchedulerNoteOffOrdering() {
 
 void TestSchedulerUnsupportedToken() {
   std::vector<piano::score::ScoreCommand> commands = {
-      {0.0, "X1", 1.0, 80},
+      {0.0, "X1", 1.0, 80, 0, {}},
   };
   piano::engine::ScoreScheduler scheduler;
   std::string error;
   const auto events = scheduler.BuildEvents(commands, &error);
   Require(events.empty(), "unsupported token should not emit events");
   Require(!error.empty(), "unsupported token should provide error");
+}
+
+void TestSchedulerLegacyScaleToken() {
+  std::vector<piano::score::ScoreCommand> commands = {
+      {0.0, "b-", 0.0, 0, 0, {}},
+      {0.0, "1", 1.0, 80, 0, {}},
+  };
+  piano::engine::ScoreScheduler scheduler;
+  std::string error;
+  const auto events = scheduler.BuildEvents(commands, &error);
+  Require(error.empty(), "legacy scale token should be supported");
+  Require(events.size() == 3, "scale change + note on/off expected");
+  Require(events[0].type == piano::engine::EventType::kTransposeChange, "first event should be transpose change");
+  Require(events[1].midi_key == 61, "b- scale should transpose note 1 to midi 61");
 }
 
 void TestConfigStoreRoundTripM6Fields() {
@@ -140,9 +165,11 @@ int main() {
   TestKeyboardMapValid();
   TestKeyboardMapInvalidRange();
   TestScoreParserSortsByBegin();
+  TestScoreParserLegacyColumnOrder();
   TestSchedulerRegression();
   TestSchedulerNoteOffOrdering();
   TestSchedulerUnsupportedToken();
+  TestSchedulerLegacyScaleToken();
   TestConfigStoreRoundTripM6Fields();
   std::cout << "[PASS] piano_tests\n";
   return 0;

@@ -10,6 +10,8 @@ struct ScoreCommand {
   std::string token;
   double last_beats = 0.0;
   int value = 0;
+  std::size_t source_line = 0;
+  std::string source_text;
 };
 
 class ScoreParser {
