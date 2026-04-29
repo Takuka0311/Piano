@@ -9,7 +9,9 @@
 
 #include "piano/audio/dsound_output_sink.h"
 #include "piano/audio/log_output_sink.h"
+#include "piano/audio/midi_output_sink.h"
 #include "piano/audio/output_sink.h"
+#include "piano/audio/vsti_output_sink.h"
 #include "piano/audio/wasapi_output_sink.h"
 #include "piano/input/keyboard_map.h"
 #include "piano/score/score_parser.h"
@@ -56,6 +58,7 @@ bool PlaybackService::Start(const AppOptions& options, std::string* error_messag
 
   AppOptions run_options = options;
   run_options.audio_backend = active_backend;
+  run_options.output_mode = active_backend;
   worker_ = std::thread(&PlaybackService::RunPlayback, this, std::move(events), run_options, std::move(sink));
   return true;
 }
@@ -122,6 +125,10 @@ bool PlaybackService::BuildSink(const AppOptions& options,
       *sink = std::make_unique<audio::WasapiOutputSink>(options.sample_rate, options.buffer_ms);
     } else if (backend == "dsound") {
       *sink = std::make_unique<audio::DsoundOutputSink>(options.sample_rate, options.buffer_ms);
+    } else if (backend == "midiout") {
+      *sink = std::make_unique<audio::MidiOutputSink>(options.midi_out_device);
+    } else if (backend == "vsti") {
+      *sink = std::make_unique<audio::VstiOutputSink>(options.vsti_plugin_path, options.midi_out_device);
     } else {
       continue;
     }
@@ -141,14 +148,43 @@ bool PlaybackService::BuildSink(const AppOptions& options,
 }
 
 std::vector<std::string> PlaybackService::ResolveBackendOrder(const AppOptions& options) const {
-  auto candidates = ParseBackendPriority(options.backend_priority);
-  if (options.audio_backend == "wasapi" || options.audio_backend == "dsound" || options.audio_backend == "log") {
-    candidates.erase(std::remove(candidates.begin(), candidates.end(), options.audio_backend), candidates.end());
-    candidates.insert(candidates.begin(), options.audio_backend);
+  const auto configured = ParseBackendPriority(options.backend_priority);
+  std::vector<std::string> candidates;
+  auto append_unique = [&candidates](const std::string& backend) {
+    if (std::find(candidates.begin(), candidates.end(), backend) == candidates.end()) {
+      candidates.push_back(backend);
+    }
+  };
+
+  std::string preferred = options.output_mode;
+  if (preferred.empty()) {
+    preferred = options.audio_backend;
   }
-  if (std::find(candidates.begin(), candidates.end(), "log") == candidates.end()) {
-    candidates.push_back("log");
+  if (preferred == "vsti") {
+    append_unique("vsti");
+    append_unique("midiout");
+    append_unique("wasapi");
+    append_unique("dsound");
+  } else if (preferred == "midiout") {
+    append_unique("midiout");
+    append_unique("wasapi");
+    append_unique("dsound");
+  } else if (preferred == "wasapi") {
+    append_unique("wasapi");
+    append_unique("dsound");
+  } else if (preferred == "dsound") {
+    append_unique("dsound");
+  } else if (preferred == "log") {
+    append_unique("log");
+  } else {
+    append_unique("wasapi");
+    append_unique("dsound");
   }
+
+  for (const auto& item : configured) {
+    append_unique(item);
+  }
+  append_unique("log");
   return candidates;
 }
 
@@ -240,7 +276,7 @@ std::vector<std::string> PlaybackService::ParseBackendPriority(const std::string
     }
   }
   if (out.empty()) {
-    out = {"wasapi", "dsound", "log"};
+    out = {"vsti", "midiout", "wasapi", "dsound", "log"};
   }
   return out;
 }

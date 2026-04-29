@@ -11,6 +11,21 @@ on:
         required: false
         default: false
         type: boolean
+      run_midiout_smoke:
+        description: "Run MIDI out smoke (manual)"
+        required: false
+        default: false
+        type: boolean
+      run_vsti_smoke:
+        description: "Run VSTi smoke with provided dll path"
+        required: false
+        default: false
+        type: boolean
+      vsti_plugin_path:
+        description: "Path to VST2 plugin dll on runner"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   build-test-package:
@@ -96,3 +111,33 @@ jobs:
       - name: WASAPI long smoke (600s)
         shell: pwsh
         run: ./scripts/smoke-wasapi.ps1 -BuildDir build-release -DurationSeconds 600 -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in
+
+  midiout-manual:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_midiout_smoke
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure + Build (Release)
+        shell: pwsh
+        run: |
+          ./scripts/configure.ps1 -BuildType Release -BuildDir build-release
+          ./scripts/build.ps1 -BuildType Release -BuildDir build-release
+      - name: MIDI out smoke
+        shell: pwsh
+        run: ./scripts/smoke-midiout.ps1 -BuildDir build-release -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in
+
+  vsti-manual:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_vsti_smoke
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure + Build (Release)
+        shell: pwsh
+        run: |
+          ./scripts/configure.ps1 -BuildType Release -BuildDir build-release
+          ./scripts/build.ps1 -BuildType Release -BuildDir build-release
+      - name: VSTi smoke
+        shell: pwsh
+        run: ./scripts/smoke-vsti.ps1 -BuildDir build-release -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -VstiPluginPath "${{ inputs.vsti_plugin_path }}"

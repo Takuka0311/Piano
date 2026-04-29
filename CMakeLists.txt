@@ -21,6 +21,8 @@ add_executable(piano_cli
   src/audio/log_output_sink.cpp
   src/audio/wasapi_output_sink.cpp
   src/audio/dsound_output_sink.cpp
+  src/audio/midi_output_sink.cpp
+  src/audio/vsti_output_sink.cpp
 )
 
 target_include_directories(piano_cli
@@ -55,6 +57,8 @@ add_executable(piano_gui WIN32
   src/audio/log_output_sink.cpp
   src/audio/wasapi_output_sink.cpp
   src/audio/dsound_output_sink.cpp
+  src/audio/midi_output_sink.cpp
+  src/audio/vsti_output_sink.cpp
 )
 
 target_include_directories(piano_gui
@@ -84,6 +88,7 @@ enable_testing()
 
 add_executable(piano_tests
   tests/test_main.cpp
+  src/platform/config_store.cpp
   src/input/keyboard_map.cpp
   src/score/score_parser.cpp
   src/engine/score_scheduler.cpp

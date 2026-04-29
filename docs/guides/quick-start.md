@@ -13,6 +13,18 @@ powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -BuildType Debug -Bui
 powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -AudioBackend wasapi -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
 ```
 
+如需 MIDI Out 验证：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -AudioBackend midiout -MidiOutDevice 0 -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
+```
+
+如需 VST2.4 验证（例如 mdaPiano）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -AudioBackend vsti -VstiPluginPath "C:\path\to\mdaPiano.dll" -MidiOutDevice 0 -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
+```
+
 如需日志模式（不发声，仅看事件）：
 
 ```powershell
@@ -67,3 +79,9 @@ powershell -ExecutionPolicy Bypass -File scripts/smoke-wasapi.ps1 -BuildDir buil
 ```
 
 说明：默认 GitHub CI 不运行该长时测试；建议本地或手动触发 workflow 时执行。
+
+## 手动触发的 MIDI/VSTi 冒烟
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/smoke-midiout.ps1 -BuildDir build-release -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in
+powershell -ExecutionPolicy Bypass -File scripts/smoke-vsti.ps1 -BuildDir build-release -VstiPluginPath "C:\path\to\mdaPiano.dll" -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in
+```

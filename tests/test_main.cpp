@@ -6,6 +6,7 @@
 
 #include "piano/engine/score_scheduler.h"
 #include "piano/input/keyboard_map.h"
+#include "piano/platform/config_store.h"
 #include "piano/score/score_parser.h"
 
 namespace {
@@ -109,6 +110,30 @@ void TestSchedulerUnsupportedToken() {
   Require(!error.empty(), "unsupported token should provide error");
 }
 
+void TestConfigStoreRoundTripM6Fields() {
+  const auto path = WriteTempFile("config.ini", "");
+  piano::platform::ConfigStore store(path.string());
+  piano::platform::UiConfig config;
+  config.keyboard_path = "assets/default.keyboard";
+  config.score_path = "assets/demo.in";
+  config.output_mode = "vsti";
+  config.audio_backend = "vsti";
+  config.backend_priority = "vsti,midiout,wasapi,dsound,log";
+  config.midi_out_device = "0";
+  config.vsti_plugin_path = "mdaPiano.dll";
+  config.sample_rate = 48000;
+  config.buffer_ms = 40;
+  config.recent_keyboard_path = "assets/default.keyboard";
+  config.recent_score_path = "assets/demo.in";
+  std::string error;
+  Require(store.Save(config, &error), "config save should succeed");
+
+  const auto loaded = store.Load();
+  Require(loaded.output_mode == "vsti", "output_mode should round-trip");
+  Require(loaded.midi_out_device == "0", "midi_out_device should round-trip");
+  Require(loaded.vsti_plugin_path == "mdaPiano.dll", "vsti_plugin_path should round-trip");
+}
+
 }  // namespace
 
 int main() {
@@ -118,6 +143,7 @@ int main() {
   TestSchedulerRegression();
   TestSchedulerNoteOffOrdering();
   TestSchedulerUnsupportedToken();
+  TestConfigStoreRoundTripM6Fields();
   std::cout << "[PASS] piano_tests\n";
   return 0;
 }

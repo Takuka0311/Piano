@@ -18,14 +18,17 @@ enum : int {
   kComboBackend = 2003,
   kEditSampleRate = 2004,
   kEditBufferMs = 2005,
-  kBtnPlay = 2006,
-  kBtnStop = 2007,
-  kBtnSave = 2008,
-  kBtnBrowseKeyboard = 2009,
-  kBtnBrowseScore = 2010,
-  kListActive = 2011,
-  kLabelState = 2012,
-  kLabelStatus = 2013,
+  kEditMidiDevice = 2006,
+  kEditVstiPlugin = 2007,
+  kBtnPlay = 2008,
+  kBtnStop = 2009,
+  kBtnSave = 2010,
+  kBtnBrowseKeyboard = 2011,
+  kBtnBrowseScore = 2012,
+  kBtnBrowseVsti = 2013,
+  kListActive = 2014,
+  kLabelState = 2015,
+  kLabelStatus = 2016,
 };
 
 struct GuiContext {
@@ -65,9 +68,14 @@ void ApplyConfigToControls(HWND hwnd, const piano::platform::UiConfig& config) {
   SetText(hwnd, kEditScore, config.score_path);
   SetText(hwnd, kEditSampleRate, std::to_string(config.sample_rate));
   SetText(hwnd, kEditBufferMs, std::to_string(config.buffer_ms));
+  SetText(hwnd, kEditMidiDevice, config.midi_out_device);
+  SetText(hwnd, kEditVstiPlugin, config.vsti_plugin_path);
+  const std::string mode = config.output_mode.empty() ? config.audio_backend : config.output_mode;
   int idx = 0;
-  if (config.audio_backend == "dsound") idx = 1;
-  if (config.audio_backend == "log") idx = 2;
+  if (mode == "midiout") idx = 1;
+  if (mode == "dsound") idx = 2;
+  if (mode == "log") idx = 3;
+  if (mode == "vsti") idx = 4;
   SendMessageA(GetDlgItem(hwnd, kComboBackend), CB_SETCURSEL, idx, 0);
 }
 
@@ -77,15 +85,22 @@ piano::platform::UiConfig ReadConfigFromControls(HWND hwnd) {
   config.score_path = GetText(hwnd, kEditScore);
   config.sample_rate = (std::max)(1, std::stoi(GetText(hwnd, kEditSampleRate)));
   config.buffer_ms = (std::max)(1, std::stoi(GetText(hwnd, kEditBufferMs)));
+  config.midi_out_device = GetText(hwnd, kEditMidiDevice);
+  config.vsti_plugin_path = GetText(hwnd, kEditVstiPlugin);
   const LRESULT backend_idx = SendMessageA(GetDlgItem(hwnd, kComboBackend), CB_GETCURSEL, 0, 0);
   if (backend_idx == 1) {
-    config.audio_backend = "dsound";
+    config.output_mode = "midiout";
   } else if (backend_idx == 2) {
-    config.audio_backend = "log";
+    config.output_mode = "dsound";
+  } else if (backend_idx == 3) {
+    config.output_mode = "log";
+  } else if (backend_idx == 4) {
+    config.output_mode = "vsti";
   } else {
-    config.audio_backend = "wasapi";
+    config.output_mode = "wasapi";
   }
-  config.backend_priority = "wasapi,dsound,log";
+  config.audio_backend = config.output_mode;
+  config.backend_priority = "vsti,midiout,wasapi,dsound,log";
   config.recent_keyboard_path = config.keyboard_path;
   config.recent_score_path = config.score_path;
   return config;
@@ -125,12 +140,14 @@ void CreateControls(HWND hwnd) {
   CreateWindowA("BUTTON", "Browse", WS_CHILD | WS_VISIBLE, 540, 46, 90, 24, hwnd,
                 reinterpret_cast<HMENU>(kBtnBrowseScore), nullptr, nullptr);
 
-  CreateWindowA("STATIC", "Backend:", WS_CHILD | WS_VISIBLE, 16, 82, 80, 20, hwnd, nullptr, nullptr, nullptr);
+  CreateWindowA("STATIC", "Output:", WS_CHILD | WS_VISIBLE, 16, 82, 80, 20, hwnd, nullptr, nullptr, nullptr);
   HWND combo = CreateWindowA("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST, 100, 80, 120, 200, hwnd,
                              reinterpret_cast<HMENU>(kComboBackend), nullptr, nullptr);
   SendMessageA(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("wasapi"));
+  SendMessageA(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("midiout"));
   SendMessageA(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("dsound"));
   SendMessageA(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("log"));
+  SendMessageA(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("vsti"));
 
   CreateWindowA("STATIC", "Sample Rate:", WS_CHILD | WS_VISIBLE, 250, 82, 90, 20, hwnd, nullptr, nullptr, nullptr);
   CreateWindowA("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 345, 80, 90, 24, hwnd,
@@ -139,19 +156,29 @@ void CreateControls(HWND hwnd) {
   CreateWindowA("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 530, 80, 100, 24, hwnd,
                 reinterpret_cast<HMENU>(kEditBufferMs), nullptr, nullptr);
 
-  CreateWindowA("BUTTON", "Play", WS_CHILD | WS_VISIBLE, 16, 116, 90, 26, hwnd, reinterpret_cast<HMENU>(kBtnPlay),
+  CreateWindowA("STATIC", "MIDI Device:", WS_CHILD | WS_VISIBLE, 16, 114, 90, 20, hwnd, nullptr, nullptr, nullptr);
+  CreateWindowA("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 100, 112, 530, 24, hwnd,
+                reinterpret_cast<HMENU>(kEditMidiDevice), nullptr, nullptr);
+
+  CreateWindowA("STATIC", "VSTi DLL:", WS_CHILD | WS_VISIBLE, 16, 146, 90, 20, hwnd, nullptr, nullptr, nullptr);
+  CreateWindowA("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 100, 144, 430, 24, hwnd,
+                reinterpret_cast<HMENU>(kEditVstiPlugin), nullptr, nullptr);
+  CreateWindowA("BUTTON", "Browse", WS_CHILD | WS_VISIBLE, 540, 144, 90, 24, hwnd,
+                reinterpret_cast<HMENU>(kBtnBrowseVsti), nullptr, nullptr);
+
+  CreateWindowA("BUTTON", "Play", WS_CHILD | WS_VISIBLE, 16, 176, 90, 26, hwnd, reinterpret_cast<HMENU>(kBtnPlay),
                 nullptr, nullptr);
-  CreateWindowA("BUTTON", "Stop", WS_CHILD | WS_VISIBLE, 114, 116, 90, 26, hwnd, reinterpret_cast<HMENU>(kBtnStop),
+  CreateWindowA("BUTTON", "Stop", WS_CHILD | WS_VISIBLE, 114, 176, 90, 26, hwnd, reinterpret_cast<HMENU>(kBtnStop),
                 nullptr, nullptr);
-  CreateWindowA("BUTTON", "Save Config", WS_CHILD | WS_VISIBLE, 212, 116, 110, 26, hwnd,
+  CreateWindowA("BUTTON", "Save Config", WS_CHILD | WS_VISIBLE, 212, 176, 110, 26, hwnd,
                 reinterpret_cast<HMENU>(kBtnSave), nullptr, nullptr);
 
-  CreateWindowA("STATIC", "state: idle", WS_CHILD | WS_VISIBLE, 16, 154, 300, 20, hwnd,
+  CreateWindowA("STATIC", "state: idle", WS_CHILD | WS_VISIBLE, 16, 214, 300, 20, hwnd,
                 reinterpret_cast<HMENU>(kLabelState), nullptr, nullptr);
-  CreateWindowA("STATIC", "status: ready", WS_CHILD | WS_VISIBLE, 16, 178, 620, 20, hwnd,
+  CreateWindowA("STATIC", "status: ready", WS_CHILD | WS_VISIBLE, 16, 238, 620, 20, hwnd,
                 reinterpret_cast<HMENU>(kLabelStatus), nullptr, nullptr);
 
-  CreateWindowA("LISTBOX", "", WS_CHILD | WS_VISIBLE | WS_BORDER | LBS_NOTIFY, 16, 210, 614, 320, hwnd,
+  CreateWindowA("LISTBOX", "", WS_CHILD | WS_VISIBLE | WS_BORDER | LBS_NOTIFY, 16, 270, 614, 260, hwnd,
                 reinterpret_cast<HMENU>(kListActive), nullptr, nullptr);
 }
 
@@ -177,6 +204,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
       } else if (id == kBtnBrowseScore) {
         const auto path = PickFile(hwnd, "Score (*.in)\0*.in\0All Files (*.*)\0*.*\0");
         if (!path.empty()) SetText(hwnd, kEditScore, path);
+      } else if (id == kBtnBrowseVsti) {
+        const auto path = PickFile(hwnd, "VST2 Plugin (*.dll)\0*.dll\0All Files (*.*)\0*.*\0");
+        if (!path.empty()) SetText(hwnd, kEditVstiPlugin, path);
       } else if (id == kBtnPlay) {
         auto config = ReadConfigFromControls(hwnd);
         ctx->app.SetConfig(config);
