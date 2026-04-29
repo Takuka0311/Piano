@@ -1,0 +1,16 @@
+{
+    "cmake.generator": "Ninja",
+    "cmake.configureOnOpen": true,
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.configureSettings": {
+      "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+    },
+  
+    "C_Cpp.intelliSenseEngine": "disabled",
+  
+    "clangd.arguments": [
+      "--background-index",
+      "--clang-tidy",
+      "--compile-commands-dir=${workspaceFolder}/build"
+    ]
+  }

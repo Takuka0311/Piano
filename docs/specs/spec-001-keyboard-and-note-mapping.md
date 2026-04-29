@@ -1,6 +1,6 @@
 # SPEC-001 键盘与音符映射
 
-- 状态：`draft`
+- 状态：`implemented`
 - 优先级：P0
 
 ## 背景与目标
@@ -40,3 +40,14 @@
 ## 风险与回滚
 - 风险：不同键盘布局/输入法导致 KeyName 不一致。
 - 回滚：提供“legacy keyname mode”映射策略开关。
+
+## 实现记录（M1）
+- 实现文件：
+  - `include/piano/input/keyboard_map.h`
+  - `src/input/keyboard_map.cpp`
+- 已落地能力：
+  - 支持 `<KeyName> <MidiKey>` 加载与查询；
+  - 支持空行/注释行忽略；
+  - 支持范围校验（MIDI 0..127）与错误信息返回。
+- 未完成项（后续）：
+  - auto-repeat 去抖属于 GUI/输入事件层，待 UI 里程碑接入后补齐。

@@ -1,31 +1,37 @@
-# Piano (重构进行中)
+# Piano (Windows 重构版)
 
-这是一个正在重构的 Windows 钢琴项目仓库。  
-当前阶段以文档先行（spec-driven）为主，代码实现尚未开始。
+这是一个仅面向 Windows 的钢琴项目重构仓库，采用 spec-driven 开发方式。
 
-## 当前状态
-- 已完成旧版本分析文档整理。
-- 已完成重构技术选型与目标架构文档。
-- 已建立首批规格文档（spec-001 ~ spec-004）。
-- 仓库已完成历史无关文件清理，仅保留文档与配置基础。
+## 当前里程碑状态（M1 已落地）
+- 已完成最小可运行 CLI 骨架（`CMake + Ninja + C++20`）。
+- 已完成模块拆分：`input / score / engine / audio / app`。
+- 已实现 spec-001 + spec-003 的最小闭环：
+  - 读取 `*.keyboard` 键位映射；
+  - 读取 `*.in` 曲谱并调度；
+  - 打通 `输入 -> 事件 -> 输出`（当前输出为日志占位 `LogOutput`）。
+- 已提供本地脚本：`configure/build/run-demo`。
 
 ## 目录结构
-- `docs/legacy`：旧版本实现、功能、风险与可复用资产分析。
-- `docs/rebuild`：重构方案、架构设计、构建发布与迁移计划。
-- `docs/specs`：spec-driven 规范与首批功能规格。
+- `include/piano`：对外头文件（模块接口）。
+- `src`：模块实现。
+- `assets`：示例键位与示例曲谱。
+- `scripts`：本地构建与运行脚本。
+- `docs/legacy`：旧版本分析。
+- `docs/rebuild`：重构方案与迁移文档。
+- `docs/specs`：规格与状态管理。
 
-## 建议阅读顺序
-1. `docs/legacy/overview.md`
-2. `docs/rebuild/tech-selection.md`
-3. `docs/rebuild/target-architecture.md`
-4. `docs/specs/README.md`
-5. `docs/specs/spec-001-keyboard-and-note-mapping.md`
+## 本地构建与运行
+在仓库根目录执行：
 
-## 后续开发方向（下一阶段）
-- 初始化工程骨架（Windows + CMake + Ninja）。
-- 优先落地 spec-001 与 spec-003（键位映射 + 曲谱回放）。
-- 建立最小可运行链路：输入 -> 事件 -> 音频输出。
-- 补充 CI（构建、打包、发布可运行 exe）。
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/configure.ps1 -BuildType Debug -BuildDir build
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -BuildType Debug -BuildDir build
+powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
+```
 
-## 说明
-- 这是阶段性 README，完整版本将在核心功能开发完成后补充。
+程序会输出调度后的事件日志（NoteOn/NoteOff、TempoChange、TransposeChange），用于 M1 兼容与回归验证。
+
+## 下一步（M2）
+- 在 `audio` 模块接入 WASAPI 最小真实发声路径。
+- 为 spec-001/spec-003 增加单元测试与回归样例。
+- 增加 GitHub Actions，产出可运行 exe 压缩包。

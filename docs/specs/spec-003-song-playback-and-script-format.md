@@ -1,6 +1,6 @@
 # SPEC-003 曲谱回放与脚本格式
 
-- 状态：`draft`
+- 状态：`implemented`
 - 优先级：P0
 
 ## 背景与目标
@@ -46,3 +46,16 @@
 ## 风险与回滚
 - 风险：旧版隐式行为（例如边界值）未完全记录。
 - 回滚：提供 `legacy_parser_mode` 按旧逻辑运行。
+
+## 实现记录（M1）
+- 实现文件：
+  - `include/piano/score/score_parser.h`
+  - `src/score/score_parser.cpp`
+  - `include/piano/engine/score_scheduler.h`
+  - `src/engine/score_scheduler.cpp`
+- 已落地能力：
+  - 解析 `begin id last db`；
+  - 覆盖 token：`1..7`、`#`、`+/-`、`0`、`S`、`A..G/a..g`；
+  - 生成时间有序的 NoteOn/NoteOff/TempoChange/TransposeChange 事件序列。
+- 未完成项（后续）：
+  - 与旧版更细粒度边界行为（极端输入、复杂并发控制）A/B 回归。
