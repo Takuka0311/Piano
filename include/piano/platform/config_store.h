@@ -1,0 +1,27 @@
+#pragma once
+
+#include <string>
+
+namespace piano::platform {
+
+struct UiConfig {
+  std::string keyboard_path = "assets/default.keyboard";
+  std::string score_path = "assets/demo.in";
+  std::string audio_backend = "wasapi";
+  int sample_rate = 48000;
+  int buffer_ms = 40;
+};
+
+class ConfigStore {
+ public:
+  explicit ConfigStore(std::string path);
+
+  UiConfig Load() const;
+  bool Save(const UiConfig& config, std::string* error_message) const;
+  const std::string& Path() const;
+
+ private:
+  std::string path_;
+};
+
+}  // namespace piano::platform

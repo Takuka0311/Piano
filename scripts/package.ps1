@@ -11,6 +11,7 @@ $exePath = Join-Path $BuildDir "piano_cli.exe"
 if (-not (Test-Path $exePath)) {
     throw "Executable not found: $exePath. Run configure/build first."
 }
+$guiExePath = Join-Path $BuildDir "piano_gui.exe"
 
 $stageDir = Join-Path $OutputDir "piano-win-x64"
 $zipPath = Join-Path $OutputDir "piano-win-x64.zip"
@@ -24,6 +25,9 @@ if (Test-Path $zipPath) {
 
 New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
 Copy-Item $exePath (Join-Path $stageDir "piano_cli.exe")
+if (Test-Path $guiExePath) {
+    Copy-Item $guiExePath (Join-Path $stageDir "piano_gui.exe")
+}
 Copy-Item "README.md" (Join-Path $stageDir "README.md")
 Copy-Item "assets" (Join-Path $stageDir "assets") -Recurse -Force
 

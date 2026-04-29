@@ -26,6 +26,8 @@
   - 收集 exe、配置、必要运行时，生成发布包。
 - `ci-local-check.ps1`
   - 运行格式检查、基础测试、打包预演。
+- `run-gui-smoke.ps1`
+  - GUI 启动冒烟（短时自动退出）。
 
 ## GitHub Actions 发布方案
 - 触发：
@@ -36,7 +38,8 @@
   2. Build（Release）。
   3. Build + Test（Debug，`ctest`）。
   4. Smoke run（`log` backend）。
-  5. Package（zip）并上传 artifact。
+  5. GUI startup smoke。
+  6. Package（zip）并上传 artifact。
  - 工作流文件：
   - `.github/workflows/windows-ci.yml`
  - 说明：

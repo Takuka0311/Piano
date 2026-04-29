@@ -13,6 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(piano_cli
   src/app/main.cpp
   src/app/application.cpp
+  src/app/playback_service.cpp
   src/input/keyboard_map.cpp
   src/score/score_parser.cpp
   src/engine/score_scheduler.cpp
@@ -36,6 +37,38 @@ target_link_libraries(piano_cli
     ole32
     avrt
     uuid
+)
+
+add_executable(piano_gui WIN32
+  src/ui/gui_main.cpp
+  src/ui/gui_app.cpp
+  src/platform/config_store.cpp
+  src/app/playback_service.cpp
+  src/input/keyboard_map.cpp
+  src/score/score_parser.cpp
+  src/engine/score_scheduler.cpp
+  src/audio/log_output_sink.cpp
+  src/audio/wasapi_output_sink.cpp
+)
+
+target_include_directories(piano_gui
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_compile_options(piano_gui
+  PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive->
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
+)
+
+target_link_libraries(piano_gui
+  PRIVATE
+    ole32
+    avrt
+    uuid
+    comdlg32
+    comctl32
 )
 
 enable_testing()

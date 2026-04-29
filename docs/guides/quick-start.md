@@ -24,6 +24,7 @@ powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -A
 powershell -ExecutionPolicy Bypass -File scripts/configure.ps1 -BuildType Release -BuildDir build-release
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -BuildType Release -BuildDir build-release
 powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build-release -AudioBackend wasapi -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
+.\build-release\piano_gui.exe
 ```
 
 ## 运行测试
@@ -46,6 +47,11 @@ powershell -ExecutionPolicy Bypass -File scripts/package.ps1 -BuildType Release 
 ## 一键本地 CI 检查
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/ci-local-check.ps1 -DebugDir build -ReleaseDir build-release
+```
+
+## GUI 启动冒烟（本地/CI）
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run-gui-smoke.ps1 -BuildDir build-release -ExitMs 1200
 ```
 
 ## WASAPI 长时稳定性（10 分钟）

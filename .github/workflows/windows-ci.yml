@@ -58,6 +58,10 @@ jobs:
         shell: pwsh
         run: ./scripts/run-demo.ps1 -BuildDir build-release -AudioBackend log -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
 
+      - name: Smoke run (gui startup)
+        shell: pwsh
+        run: ./scripts/run-gui-smoke.ps1 -BuildDir build-release -ExitMs 1200
+
       - name: Package
         shell: pwsh
         run: ./scripts/package.ps1 -BuildType Release -BuildDir build-release -OutputDir dist

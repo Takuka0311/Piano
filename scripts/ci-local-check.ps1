@@ -24,6 +24,7 @@ if ($LASTEXITCODE -ne 0) {
 powershell -ExecutionPolicy Bypass -File scripts/configure.ps1 -BuildType Release -BuildDir $ReleaseDir
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -BuildType Release -BuildDir $ReleaseDir
 powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir $ReleaseDir -AudioBackend log -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
+powershell -ExecutionPolicy Bypass -File scripts/run-gui-smoke.ps1 -BuildDir $ReleaseDir -ExitMs 1200
 powershell -ExecutionPolicy Bypass -File scripts/package.ps1 -BuildType Release -BuildDir $ReleaseDir -OutputDir dist
 
 Write-Host "Local CI check completed."
