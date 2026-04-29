@@ -1,6 +1,6 @@
 # SPEC-002 音频输出与延迟
 
-- 状态：`review`
+- 状态：`implemented`
 - 优先级：P0
 
 ## 背景与目标
@@ -63,3 +63,31 @@
   - 支持复音混音输出；
   - 提供运行时健康状态上报（`IsHealthy`），应用层可执行回退。
 - 应用层已在运行时检测后端健康并支持回退 `log`。
+
+## 实现记录（M5）
+- DirectSound 回退后端已落地：
+  - 新增 `include/piano/audio/dsound_output_sink.h`
+  - 新增 `src/audio/dsound_output_sink.cpp`
+  - `PlaybackService` 回退链升级为 `wasapi -> dsound -> log`
+- WASAPI 异常处理增强：
+  - 运行时错误消息包含 HRESULT 与 recoverable 标记；
+  - 应用层增加“有限重试 + 冷却间隔”恢复策略，失败后自动降级下一后端。
+- 参数与配置增强：
+  - CLI 新增 `--backend-priority`，支持显式回退顺序；
+  - 配置文件新增 `backend_priority/recent_keyboard_path/recent_score_path` 持久化字段。
+- 轻量验证闭环：
+  - `piano_cli --help` 纳入本地/CI 快速检查；
+  - 打包后执行 `scripts/verify-package.ps1` 检查关键内容。
+
+## M5 验收证据
+- 工程验证：
+  - Debug 构建通过；
+  - Release 构建通过；
+  - `ctest --test-dir build --output-on-failure` 通过。
+- 运行验证：
+  - `run-demo.ps1 -AudioBackend log` 可运行；
+  - GUI 启动冒烟保留在默认快速链路中；
+  - 后端参数支持 `wasapi|dsound|log`。
+- 打包验证：
+  - `package.ps1` 产物生成成功；
+  - `verify-package.ps1` 校验 `piano_cli.exe/README.md/assets` 存在。

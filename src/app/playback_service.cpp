@@ -2,8 +2,12 @@
 
 #include <chrono>
 #include <iostream>
+#include <sstream>
 #include <thread>
+#include <algorithm>
+#include <cctype>
 
+#include "piano/audio/dsound_output_sink.h"
 #include "piano/audio/log_output_sink.h"
 #include "piano/audio/output_sink.h"
 #include "piano/audio/wasapi_output_sink.h"
@@ -22,20 +26,22 @@ PlaybackService::~PlaybackService() {
 bool PlaybackService::Start(const AppOptions& options, std::string* error_message) {
   if (running_.load()) {
     if (error_message != nullptr) {
-      *error_message = "playback already running";
+      *error_message = FormatError(AppErrorCode::kPlaybackBusy, "playback already running");
     }
     return false;
   }
 
   std::vector<engine::ScheduledEvent> events;
   if (!PrepareEvents(options, &events, error_message)) {
-    SetError(error_message != nullptr ? *error_message : "failed to prepare events");
+    SetError(AppErrorCode::kScheduleFailed, error_message != nullptr ? *error_message : "failed to prepare events");
     return false;
   }
 
   std::unique_ptr<audio::OutputSink> sink;
-  if (!BuildSink(options, &sink, error_message)) {
-    SetError(error_message != nullptr ? *error_message : "failed to build output sink");
+  std::string active_backend;
+  const auto preferred_backends = ResolveBackendOrder(options);
+  if (!BuildSink(options, preferred_backends, &sink, &active_backend, error_message)) {
+    SetError(AppErrorCode::kAudioStartFailed, error_message != nullptr ? *error_message : "failed to build output sink");
     return false;
   }
 
@@ -48,7 +54,9 @@ bool PlaybackService::Start(const AppOptions& options, std::string* error_messag
     active_notes_.clear();
   }
 
-  worker_ = std::thread(&PlaybackService::RunPlayback, this, std::move(events), options, std::move(sink));
+  AppOptions run_options = options;
+  run_options.audio_backend = active_backend;
+  worker_ = std::thread(&PlaybackService::RunPlayback, this, std::move(events), run_options, std::move(sink));
   return true;
 }
 
@@ -77,7 +85,7 @@ bool PlaybackService::PrepareEvents(const AppOptions& options,
   std::string error;
   if (!keyboard_map.LoadFromFile(options.keyboard_map_path, &error)) {
     if (error_message != nullptr) {
-      *error_message = "Keyboard map load failed: " + error;
+      *error_message = FormatError(AppErrorCode::kKeyboardLoadFailed, error);
     }
     return false;
   }
@@ -85,7 +93,7 @@ bool PlaybackService::PrepareEvents(const AppOptions& options,
   score::ScoreParser parser;
   if (!parser.LoadFromFile(options.score_path, &error)) {
     if (error_message != nullptr) {
-      *error_message = "Score load failed: " + error;
+      *error_message = FormatError(AppErrorCode::kScoreLoadFailed, error);
     }
     return false;
   }
@@ -94,7 +102,7 @@ bool PlaybackService::PrepareEvents(const AppOptions& options,
   *events = scheduler.BuildEvents(parser.Commands(), &error);
   if (!error.empty()) {
     if (error_message != nullptr) {
-      *error_message = "Schedule failed: " + error;
+      *error_message = FormatError(AppErrorCode::kScheduleFailed, error);
     }
     return false;
   }
@@ -102,28 +110,59 @@ bool PlaybackService::PrepareEvents(const AppOptions& options,
 }
 
 bool PlaybackService::BuildSink(const AppOptions& options,
+                                const std::vector<std::string>& preferred_backends,
                                 std::unique_ptr<audio::OutputSink>* sink,
+                                std::string* active_backend,
                                 std::string* error_message) {
-  if (options.audio_backend == "log") {
-    *sink = std::make_unique<audio::LogOutputSink>(std::cout);
-  } else {
-    *sink = std::make_unique<audio::WasapiOutputSink>(options.sample_rate, options.buffer_ms);
-  }
-
   std::string error;
-  if ((*sink)->Start(&error)) {
-    return true;
-  }
+  for (const auto& backend : preferred_backends) {
+    if (backend == "log") {
+      *sink = std::make_unique<audio::LogOutputSink>(std::cout);
+    } else if (backend == "wasapi") {
+      *sink = std::make_unique<audio::WasapiOutputSink>(options.sample_rate, options.buffer_ms);
+    } else if (backend == "dsound") {
+      *sink = std::make_unique<audio::DsoundOutputSink>(options.sample_rate, options.buffer_ms);
+    } else {
+      continue;
+    }
 
-  if (options.audio_backend != "log") {
-    *sink = std::make_unique<audio::LogOutputSink>(std::cout);
     if ((*sink)->Start(&error)) {
+      if (active_backend != nullptr) {
+        *active_backend = backend;
+      }
       return true;
     }
   }
 
   if (error_message != nullptr) {
-    *error_message = error;
+    *error_message = FormatError(AppErrorCode::kAudioStartFailed, error);
+  }
+  return false;
+}
+
+std::vector<std::string> PlaybackService::ResolveBackendOrder(const AppOptions& options) const {
+  auto candidates = ParseBackendPriority(options.backend_priority);
+  if (options.audio_backend == "wasapi" || options.audio_backend == "dsound" || options.audio_backend == "log") {
+    candidates.erase(std::remove(candidates.begin(), candidates.end(), options.audio_backend), candidates.end());
+    candidates.insert(candidates.begin(), options.audio_backend);
+  }
+  if (std::find(candidates.begin(), candidates.end(), "log") == candidates.end()) {
+    candidates.push_back("log");
+  }
+  return candidates;
+}
+
+bool PlaybackService::TryRecoverAudio(const AppOptions& options,
+                                      std::unique_ptr<audio::OutputSink>* sink,
+                                      std::string* active_backend,
+                                      std::string* error_message) {
+  const auto preferred = ResolveBackendOrder(options);
+  constexpr int kRecoverAttempts = 2;
+  for (int attempt = 0; attempt < kRecoverAttempts; ++attempt) {
+    if (BuildSink(options, preferred, sink, active_backend, error_message)) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
   }
   return false;
 }
@@ -131,7 +170,7 @@ bool PlaybackService::BuildSink(const AppOptions& options,
 void PlaybackService::RunPlayback(std::vector<engine::ScheduledEvent> events,
                                   AppOptions options,
                                   std::unique_ptr<audio::OutputSink> sink) {
-  (void)options;
+  std::string active_backend = options.audio_backend;
   std::string error;
   const auto start = std::chrono::steady_clock::now();
   for (const auto& event : events) {
@@ -143,12 +182,17 @@ void PlaybackService::RunPlayback(std::vector<engine::ScheduledEvent> events,
     std::this_thread::sleep_until(target);
 
     if (!sink->IsHealthy(&error)) {
-      SetError("Audio backend runtime unhealthy: " + error);
+      SetError(AppErrorCode::kAudioRuntimeFailed, "backend=" + active_backend + " detail=" + error);
       sink->Stop();
-      sink = std::make_unique<audio::LogOutputSink>(std::cout);
-      if (!sink->Start(&error)) {
-        SetError("Log backend start failed: " + error);
+      std::string recover_error;
+      if (!TryRecoverAudio(options, &sink, &active_backend, &recover_error)) {
+        SetError(AppErrorCode::kAudioFallbackFailed, recover_error);
         break;
+      }
+      {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        state_ = PlaybackState::kPlaying;
+        message_ = "recovered backend=" + active_backend;
       }
     }
 
@@ -179,6 +223,26 @@ void PlaybackService::SetError(const std::string& message) {
   std::lock_guard<std::mutex> lock(state_mutex_);
   state_ = PlaybackState::kError;
   message_ = message;
+}
+
+void PlaybackService::SetError(AppErrorCode code, const std::string& message) {
+  SetError(FormatError(code, message));
+}
+
+std::vector<std::string> PlaybackService::ParseBackendPriority(const std::string& raw) {
+  std::vector<std::string> out;
+  std::stringstream ss(raw);
+  std::string item;
+  while (std::getline(ss, item, ',')) {
+    item.erase(std::remove_if(item.begin(), item.end(), [](unsigned char c) { return std::isspace(c); }), item.end());
+    if (!item.empty()) {
+      out.push_back(item);
+    }
+  }
+  if (out.empty()) {
+    out = {"wasapi", "dsound", "log"};
+  }
+  return out;
 }
 
 }  // namespace piano::app

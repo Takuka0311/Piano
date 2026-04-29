@@ -19,6 +19,12 @@ powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -A
 powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -AudioBackend log -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
 ```
 
+如需 DirectSound 回退链验证：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run-demo.ps1 -BuildDir build -AudioBackend dsound -KeyboardPath assets/default.keyboard -ScorePath assets/demo.in -ProbeKey Q
+```
+
 ## Release 构建与运行
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/configure.ps1 -BuildType Release -BuildDir build-release
@@ -42,6 +48,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -BuildType Debug -Bui
 ## 打包
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/package.ps1 -BuildType Release -BuildDir build-release -OutputDir dist
+powershell -ExecutionPolicy Bypass -File scripts/verify-package.ps1 -ZipPath dist/piano-win-x64.zip
 ```
 
 ## 一键本地 CI 检查

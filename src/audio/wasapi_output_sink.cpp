@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <sstream>
 #include <thread>
 
 #include <combaseapi.h>
@@ -32,9 +33,11 @@ bool WasapiOutputSink::Start(std::string* error_message) {
   }
 
   healthy_.store(true);
+  recoverable_failure_.store(true);
   {
     std::lock_guard<std::mutex> lock(state_mutex_);
     last_error_.clear();
+    last_error_code_ = 0;
     active_notes_.clear();
     event_queue_.clear();
   }
@@ -117,7 +120,15 @@ bool WasapiOutputSink::IsHealthy(std::string* error_message) const {
   const bool ok = healthy_.load();
   if (error_message != nullptr) {
     std::lock_guard<std::mutex> lock(state_mutex_);
-    *error_message = ok ? std::string() : last_error_;
+    if (ok) {
+      *error_message = std::string();
+    } else {
+      std::ostringstream oss;
+      oss << last_error_ << " hr=0x" << std::hex << std::uppercase
+          << static_cast<unsigned long>(last_error_code_)
+          << (recoverable_failure_.load() ? " recoverable=true" : " recoverable=false");
+      *error_message = oss.str();
+    }
   }
   return ok;
 }
@@ -241,7 +252,7 @@ void WasapiOutputSink::RenderLoop() {
     UINT32 padding = 0;
     HRESULT hr = audio_client_->GetCurrentPadding(&padding);
     if (FAILED(hr)) {
-      MarkUnhealthy("WASAPI: GetCurrentPadding failed");
+      MarkUnhealthy("WASAPI: GetCurrentPadding failed", hr);
       running_.store(false);
       break;
     }
@@ -259,7 +270,7 @@ void WasapiOutputSink::RenderLoop() {
     BYTE* data = nullptr;
     hr = render_client_->GetBuffer(writable_frames, &data);
     if (FAILED(hr) || data == nullptr) {
-      MarkUnhealthy("WASAPI: GetBuffer failed");
+      MarkUnhealthy("WASAPI: GetBuffer failed", hr);
       running_.store(false);
       break;
     }
@@ -284,7 +295,7 @@ void WasapiOutputSink::RenderLoop() {
 
     hr = render_client_->ReleaseBuffer(writable_frames, 0);
     if (FAILED(hr)) {
-      MarkUnhealthy("WASAPI: ReleaseBuffer failed");
+      MarkUnhealthy("WASAPI: ReleaseBuffer failed", hr);
       running_.store(false);
       break;
     }
@@ -330,10 +341,20 @@ float WasapiOutputSink::MixOneSample() {
   return static_cast<float>(mixed);
 }
 
-void WasapiOutputSink::MarkUnhealthy(const std::string& message) {
+void WasapiOutputSink::MarkUnhealthy(const std::string& message, long hr_code) {
   healthy_.store(false);
+  recoverable_failure_.store(IsRecoverableError(hr_code));
   std::lock_guard<std::mutex> lock(state_mutex_);
   last_error_ = message;
+  last_error_code_ = hr_code;
+}
+
+bool WasapiOutputSink::IsRecoverableError(long hr_code) {
+  if (hr_code == 0) {
+    return true;
+  }
+  return hr_code == AUDCLNT_E_DEVICE_INVALIDATED || hr_code == AUDCLNT_E_RESOURCES_INVALIDATED ||
+         hr_code == AUDCLNT_E_SERVICE_NOT_RUNNING;
 }
 
 float WasapiOutputSink::MidiToFrequency(int midi_key) {

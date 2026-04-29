@@ -65,7 +65,9 @@ void ApplyConfigToControls(HWND hwnd, const piano::platform::UiConfig& config) {
   SetText(hwnd, kEditScore, config.score_path);
   SetText(hwnd, kEditSampleRate, std::to_string(config.sample_rate));
   SetText(hwnd, kEditBufferMs, std::to_string(config.buffer_ms));
-  const int idx = config.audio_backend == "log" ? 1 : 0;
+  int idx = 0;
+  if (config.audio_backend == "dsound") idx = 1;
+  if (config.audio_backend == "log") idx = 2;
   SendMessageA(GetDlgItem(hwnd, kComboBackend), CB_SETCURSEL, idx, 0);
 }
 
@@ -76,7 +78,16 @@ piano::platform::UiConfig ReadConfigFromControls(HWND hwnd) {
   config.sample_rate = (std::max)(1, std::stoi(GetText(hwnd, kEditSampleRate)));
   config.buffer_ms = (std::max)(1, std::stoi(GetText(hwnd, kEditBufferMs)));
   const LRESULT backend_idx = SendMessageA(GetDlgItem(hwnd, kComboBackend), CB_GETCURSEL, 0, 0);
-  config.audio_backend = (backend_idx == 1) ? "log" : "wasapi";
+  if (backend_idx == 1) {
+    config.audio_backend = "dsound";
+  } else if (backend_idx == 2) {
+    config.audio_backend = "log";
+  } else {
+    config.audio_backend = "wasapi";
+  }
+  config.backend_priority = "wasapi,dsound,log";
+  config.recent_keyboard_path = config.keyboard_path;
+  config.recent_score_path = config.score_path;
   return config;
 }
 
@@ -118,6 +129,7 @@ void CreateControls(HWND hwnd) {
   HWND combo = CreateWindowA("COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST, 100, 80, 120, 200, hwnd,
                              reinterpret_cast<HMENU>(kComboBackend), nullptr, nullptr);
   SendMessageA(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("wasapi"));
+  SendMessageA(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("dsound"));
   SendMessageA(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("log"));
 
   CreateWindowA("STATIC", "Sample Rate:", WS_CHILD | WS_VISIBLE, 250, 82, 90, 20, hwnd, nullptr, nullptr, nullptr);

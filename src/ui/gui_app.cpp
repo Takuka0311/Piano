@@ -24,8 +24,11 @@ bool GuiApp::StartPlayback(std::string* error_message) {
   options.keyboard_map_path = config_.keyboard_path;
   options.score_path = config_.score_path;
   options.audio_backend = config_.audio_backend;
+  options.backend_priority = config_.backend_priority;
   options.sample_rate = config_.sample_rate;
   options.buffer_ms = config_.buffer_ms;
+  config_.recent_keyboard_path = config_.keyboard_path;
+  config_.recent_score_path = config_.score_path;
   return playback_service_.Start(options, error_message);
 }
 

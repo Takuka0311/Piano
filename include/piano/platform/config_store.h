@@ -8,6 +8,9 @@ struct UiConfig {
   std::string keyboard_path = "assets/default.keyboard";
   std::string score_path = "assets/demo.in";
   std::string audio_backend = "wasapi";
+  std::string backend_priority = "wasapi,dsound,log";
+  std::string recent_keyboard_path;
+  std::string recent_score_path;
   int sample_rate = 48000;
   int buffer_ms = 40;
 };

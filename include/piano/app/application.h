@@ -9,6 +9,7 @@ struct AppOptions {
   std::string score_path;
   std::string probe_key;
   std::string audio_backend = "wasapi";
+  std::string backend_priority = "wasapi,dsound,log";
   int sample_rate = 48000;
   int buffer_ms = 40;
 };

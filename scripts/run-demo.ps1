@@ -3,7 +3,7 @@ param(
     [string]$KeyboardPath = "assets/default.keyboard",
     [string]$ScorePath = "assets/demo.in",
     [string]$ProbeKey = "Q",
-    [ValidateSet("wasapi", "log")]
+    [ValidateSet("wasapi", "dsound", "log")]
     [string]$AudioBackend = "wasapi",
     [int]$SampleRate = 48000,
     [int]$BufferMs = 40

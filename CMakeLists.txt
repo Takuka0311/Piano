@@ -14,11 +14,13 @@ add_executable(piano_cli
   src/app/main.cpp
   src/app/application.cpp
   src/app/playback_service.cpp
+  src/platform/config_store.cpp
   src/input/keyboard_map.cpp
   src/score/score_parser.cpp
   src/engine/score_scheduler.cpp
   src/audio/log_output_sink.cpp
   src/audio/wasapi_output_sink.cpp
+  src/audio/dsound_output_sink.cpp
 )
 
 target_include_directories(piano_cli
@@ -37,6 +39,9 @@ target_link_libraries(piano_cli
     ole32
     avrt
     uuid
+    dsound
+    dxguid
+    winmm
 )
 
 add_executable(piano_gui WIN32
@@ -49,6 +54,7 @@ add_executable(piano_gui WIN32
   src/engine/score_scheduler.cpp
   src/audio/log_output_sink.cpp
   src/audio/wasapi_output_sink.cpp
+  src/audio/dsound_output_sink.cpp
 )
 
 target_include_directories(piano_gui
@@ -69,6 +75,9 @@ target_link_libraries(piano_gui
     uuid
     comdlg32
     comctl32
+    dsound
+    dxguid
+    winmm
 )
 
 enable_testing()
